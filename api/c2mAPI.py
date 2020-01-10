@@ -188,9 +188,12 @@ class c2mAPIRest(object) :
 			return "https://rest.click2mail.com"
 	def createDocument(self,fileName):
 		headers = {'user-agent': 'my-app/0.0.1'}
-		files = {"file":open(fileName, 'rb')}
-		values = {'documentName': 'sample Letter','documentClass':'Letter 8.5 x 11','documentFormat':'PDF'}
-		r = requests.post(self.getRestUrl() + '/molpro/documents/',auth=(self.username, self.password),headers=headers,files=files,data=values)
+		files = {'file': ('file.pdf', open(fileName,'r+b'), 'application/pdf'),
+        	'documentFormat': 'PDF',
+        	'documentName': 'sample Letter',
+        	'documentClass': 'Letter 8.5 x 11'
+    	}
+		r = requests.post(self.getRestUrl() + '/molpro/documents/',auth=(self.username, self.password),headers=headers,files=files)
 		if r.status_code > 299 :
 			return r
 		#print(r.status_code)
@@ -218,8 +221,9 @@ class c2mAPIRest(object) :
 		return tostring(root)
 	def uploadAddressList(self):
 		xmlstr = self.createAddressList(self.addressMappingId)
-		headers = {'user-agent': 'my-app/0.0.1','content-type':'application/xml'}
-		r = requests.post(self.getRestUrl() + '/molpro/addressLists/',auth=(self.username, self.password),data=xmlstr)
+		print(xmlstr)
+		headers = {'user-agent': 'my-app/0.0.1','Content-Type':'application/xml'}
+		r = requests.post(self.getRestUrl() + '/molpro/addressLists/',auth=(self.username, self.password),data=xmlstr, headers=headers)
 		if r.status_code > 299 :
 			return r
 		#print(r.status_code)
