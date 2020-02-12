@@ -2,6 +2,8 @@
 import requests
 import xml.etree.ElementTree
 import uuid
+from datetime import datetime
+
 class c2mAPIBatch(object):
 	def __init__(self,username,password,mode):
 		self.batchID = "0"
@@ -152,6 +154,57 @@ class c2mAPIRest(object) :
 		self.addressList = []
 		self.addressMappingId = "0"
 		
+        def runAllDoubleSided(self,fileNameSide1,fileNameSide2,documentName,documentClass,documentFormat,addressMappingId,printOptions) :
+                utcNow = datetime.utcnow()
+                self.pringOptions = printOptions
+                self.addressMappingId = addressMappingId;
+
+                print("uploading side1 image " + fileNameSide1)
+                result = self.createDocument_v2(fileNameSide1, 'side1_'+str(utcNow), documentClass,documentFormat)
+                if result.status_code > 299 :
+                        return result
+                print(self.documentId)
+                document1Id = '394779' #self.documentId
+
+                print("uploading side2 image " + fileNameSide2)
+                result = self.createDocument_v2(fileNameSide2, 'side2_'+str(utcNow), documentClass,documentFormat)
+                if result.status_code > 299 :
+                        return result
+                print(self.documentId)
+                document2Id = '394780' #self.documentId
+
+                print('merging sides to create document ' + documentName)
+                result = self.mergeDocuments(document1Id,document2Id,documentName + '_' + str(utcNow))
+                if result.status_code > 299 :
+                        return result
+                print('Document merged ' + self.documentId)
+
+                result = self.uploadAddressList()
+                if result.status_code > 299 :
+                        return result
+
+                print("upload address: " + result.text)
+                e = xml.etree.ElementTree.fromstring(result.text)
+                for elem in e.iter(tag='status'):
+                        self.addressStatus =  elem.text
+                while self.addressStatus != "3":
+                        result = self.getAddressStatus()
+                        if result.status_code > 299 :
+                                return result
+                        e = xml.etree.ElementTree.fromstring(result.text)
+                        for elem in e.iter(tag='status'):
+                                self.addressStatus =  elem.text
+                        print("Waiting On AddresList")
+
+                result = self.createJob(printOptions)
+                if result.status_code > 299 :
+                        return result
+                result =self.submitJob()
+                if result.status_code > 299 :
+                        return result
+                return self.getJobStatus()
+
+
 	def runAll(self,fileName,addressMappingId,printOptions) :
 		self.pringOptions = printOptions
 		self.addressMappingId = addressMappingId;
@@ -186,6 +239,26 @@ class c2mAPIRest(object) :
 			return "https://stage-rest.click2mail.com"
 		else:
 			return "https://rest.click2mail.com"
+
+        def createDocument_v2(self,fileName,documentName,documentClass,documentFormat):
+                headers = {'user-agent': 'my-app/0.0.1'}
+                files = {'file': (fileName, open(fileName,'r+b'), 'image/png'),
+                'documentFormat': documentFormat,
+                'documentName': documentName,
+                'documentClass': documentClass}
+                r = requests.post(self.getRestUrl() + '/molpro/documents/',auth=(self.username, self.password),headers=headers,files=files)
+                if r.status_code > 299 :
+                        return r
+                #print(r.status_code)
+                #print(r.text)
+                e = xml.etree.ElementTree.fromstring(r.text)
+                for elem in e.iter(tag='id'):
+                        #global documentID
+                        self.documentId = elem.text
+                        #print(documentID)
+                return r
+
+
 	def createDocument(self,fileName):
 		headers = {'user-agent': 'my-app/0.0.1'}
 		files = {'file': ('file.pdf', open(fileName,'r+b'), 'application/pdf'),
@@ -204,6 +277,32 @@ class c2mAPIRest(object) :
 			self.documentId = elem.text
 			#print(documentID)
 		return r
+
+
+        def createDocumentMergeList(self,document1Id,document2Id):
+                from xml.etree.ElementTree import Element, SubElement, tostring
+
+                root = Element('documentList')
+                child = SubElement(root, "documentId")
+                child.text = document1Id
+                child = SubElement(root, "documentId")
+                child.text = document2Id
+                return tostring(root)
+
+        def mergeDocuments(self,document1Id,document2Id,documentName):
+                xmlstr = self.createDocumentMergeList(document1Id,document2Id)
+                #print(xmlstr)
+                headers = {'user-agent': 'my-app/0.0.1','Content-Type':'application/xml'}
+                r = requests.post(self.getRestUrl() + '/molpro/documents/merge?documentName='+documentName,auth=(self.username, self.password),data=xmlstr,headers=headers)
+                if r.status_code > 299 :
+                        return r
+                #print(r.status_code)
+                e = xml.etree.ElementTree.fromstring(r.text)
+                for elem in e.iter(tag='id'):
+                        self.documentId= elem.text
+                        #print(self.documentId)
+                return  r
+
 	def createAddressList(self,addressMappingId):
 		from xml.etree.ElementTree import Element, SubElement, tostring
 
