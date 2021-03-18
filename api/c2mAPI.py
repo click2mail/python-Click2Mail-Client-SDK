@@ -77,7 +77,7 @@ class c2mAPIBatch(object):
 				for key,value in x.items():
 					newElem = SubElement(elem,key)
 					newElem.text = value
-		return tostring(root)
+		return tostring(root,encoding='utf8')
 	def addJob(self,startPage,endPage, printOptions, returnAddress, recipients):
 		job = {"startPage":startPage,"endPage":endPage,"printOptions":printOptions,"returnAddress":returnAddress,"recipients":recipients}
 		self.jobs.append(job)
@@ -87,6 +87,7 @@ class c2mAPIBatch(object):
 		else:
 			return "https://batch.click2mail.com"
 	def createBatch(self) :
+		print "Creating Batch"
 		url = self.getBatchUrl() + '/v1/batches'
 		r = requests.post(url, auth=(self.username, self.password))
 		if r.status_code > 299:
@@ -97,30 +98,33 @@ class c2mAPIBatch(object):
 		for elem in e.iter(tag='id'):
 			#global batchID 
 			self.batchID= elem.text
-			#print(self.batchID)
+			print("Batch ID: ", self.batchID)
 		return r
 	def sendXML(self,xmlStr) :
+		print "Sending XML"
 		global batchID 
 		headers = {'user-agent': 'my-app/0.0.1','content-type':'application/xml'}
 		r = requests.put(self.getBatchUrl() + '/v1/batches/'+ self.batchID, auth=(self.username, self.password),headers=headers,data=xmlStr)
-	    #print(r.status_code)
+		print("HTTP status: ", r.status_code)
 		#print(r.text)
 		return r
 	def sendPDF(self,file):
+		print "Sending PDF"
 		global batchID 
 		headers = {'user-agent': 'my-app/0.0.1','content-type':'application/pdf'}
 		#str = open('test2.xml', 'r').read()
-		files = {"file":open(file, 'rb')}
-		r = requests.put(self.getBatchUrl() + '/v1/batches/'+ self.batchID, auth=(self.username, self.password),headers=headers,files=files)
-		#print(r.status_code)
+		payload = open(file, 'rb')
+		r = requests.put(self.getBatchUrl() + '/v1/batches/'+ self.batchID, auth=(self.username, self.password),headers=headers,data=payload)
+		print("HTTP status: ", r.status_code)
 		#print(r.text)
 		return r
 	def submitBatch(self):
+		print "Submitting batch"
 		global batchID 
 		headers = {'user-agent': 'my-app/0.0.1'}
 		r = requests.post(self.getBatchUrl() + '/v1/batches/'+ self.batchID, auth=(self.username, self.password),headers=headers)
-		#print(r.status_code)
-		#print(r.text)
+		print("HTTP status: ", r.status_code)
+		print(r.text)
 		return r
 class printOptions(object):
 	
