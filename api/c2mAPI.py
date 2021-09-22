@@ -3,6 +3,7 @@ import requests
 import xml.etree.ElementTree
 import uuid
 from datetime import datetime
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 class c2mAPIBatch(object):
 	def __init__(self,username,password,mode):
@@ -168,14 +169,14 @@ class c2mAPIRest(object) :
                 if result.status_code > 299 :
                         return result
                 print(self.documentId)
-                document1Id = '394779' #self.documentId
+                document1Id = self.documentId
 
                 print("uploading side2 image " + fileNameSide2)
                 result = self.createDocument_v2(fileNameSide2, 'side2_'+str(utcNow), documentClass,documentFormat)
                 if result.status_code > 299 :
                         return result
                 print(self.documentId)
-                document2Id = '394780' #self.documentId
+                document2Id = self.documentId
 
                 print('merging sides to create document ' + documentName)
                 result = self.mergeDocuments(document1Id,document2Id,documentName + '_' + str(utcNow))
@@ -245,12 +246,16 @@ class c2mAPIRest(object) :
 			return "https://rest.click2mail.com"
 
         def createDocument_v2(self,fileName,documentName,documentClass,documentFormat):
-                headers = {'user-agent': 'my-app/0.0.1'}
-                files = {'file': (fileName, open(fileName,'r+b'), 'image/png'),
-                'documentFormat': documentFormat,
-                'documentName': documentName,
-                'documentClass': documentClass}
-                r = requests.post(self.getRestUrl() + '/molpro/documents/',auth=(self.username, self.password),headers=headers,files=files)
+                mp_encoder = MultipartEncoder(
+                        fields={
+                                'documentFormat': documentFormat,
+                                'documentName': documentName,
+                                'documentClass': documentClass,
+                                'file': (fileName, open(fileName,'rb'), 'image/png')
+                        }
+                )
+               	headers = {'user-agent': 'my-app/0.0.1','Content-Type': mp_encoder.content_type}
+                r = requests.post(self.getRestUrl() + '/molpro/documents/',auth=(self.username, self.password),headers=headers,data=mp_encoder)
                 if r.status_code > 299 :
                         return r
                 #print(r.status_code)
@@ -264,13 +269,16 @@ class c2mAPIRest(object) :
 
 
 	def createDocument(self,fileName):
-		headers = {'user-agent': 'my-app/0.0.1'}
-		files = {'file': ('file.pdf', open(fileName,'r+b'), 'application/pdf'),
-        	'documentFormat': 'PDF',
-        	'documentName': 'sample Letter',
-        	'documentClass': 'Letter 8.5 x 11'
-    	}
-		r = requests.post(self.getRestUrl() + '/molpro/documents/',auth=(self.username, self.password),headers=headers,files=files)
+		mp_encoder = MultipartEncoder(
+    			fields={
+                		'documentFormat': 'PDF',
+                		'documentName': 'sample Letter',
+                		'documentClass': 'Letter 8.5 x 11',
+				'file': (fileName, open(fileName,'rb'), 'application/pdf')
+    			}
+		)
+		headers = {'user-agent': 'my-app/0.0.1','Content-Type': mp_encoder.content_type}
+		r = requests.post(self.getRestUrl() + '/molpro/documents/',auth=(self.username, self.password),headers=headers,data=mp_encoder)
 		if r.status_code > 299 :
 			return r
 		#print(r.status_code)
@@ -295,7 +303,7 @@ class c2mAPIRest(object) :
 
         def mergeDocuments(self,document1Id,document2Id,documentName):
                 xmlstr = self.createDocumentMergeList(document1Id,document2Id)
-                #print(xmlstr)
+                print(xmlstr)
                 headers = {'user-agent': 'my-app/0.0.1','Content-Type':'application/xml'}
                 r = requests.post(self.getRestUrl() + '/molpro/documents/merge?documentName='+documentName,auth=(self.username, self.password),data=xmlstr,headers=headers)
                 if r.status_code > 299 :
