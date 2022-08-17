@@ -1,6 +1,6 @@
 from api import c2mAPI
 c2m = c2mAPI.c2mAPIBatch("username","password","0")#change to 1 for production
-c2m.setFileName("myFileName","test.pdf") #set the name ane file path for batch
+c2m.setFileName("myFileName","test_batch.pdf") #set the name ane file path for batch
 
 po = c2mAPI.printOptions('Letter 8.5 x 11','Next Day','Address on Separate Page','Full Color','White 24#','Printing both sides','First Class','#10 Double Window')
 ad = c2mAPI.returnAddress("John Doe","MyCompany","12345 Test St","ste 335","Oak Brook","IL","60523")
